@@ -1,0 +1,70 @@
+# Add IUS repo
+curl 'https://setup.ius.io/' -o setup-ius.sh
+bash setup-ius.sh
+rm setup-ius.sh
+
+
+# apache
+yum install -y httpd
+systemctl start httpd.service
+systemctl enable httpd.service
+
+
+# mysql
+yum install -y mariadb-server mariadb
+systemctl start mariadb
+systemctl enable mariadb.service
+mysql_secure_installation <<EOF
+
+y
+root
+root
+y
+y
+y
+y
+EOF
+
+
+# php
+yum install -y mod_php70u php70u-cli php70u-mysqlnd php70u-process php70u-gd php70u-pdo php70u-common php70u-bcmath php70u-mbstring php70u-xml php70u-mysqlnd php70u-cli php70u-tidy php70u-json
+
+
+# setup vhost
+cat << EOF > /etc/httpd/conf.d/vagrant.dev.conf
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    VirtualDocumentRoot "/var/www/vagrant.dev/%1"
+
+    <Directory "/var/www/vagrant.dev">
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+EOF
+
+# Add document root and test subdomain directory
+mkdir -p /var/www/vagrant.dev/test
+chown -R apache. /var/www/vagrant.dev
+
+
+# phpmyadmin
+yum install -y phpmyadmin
+sed -e '/Alias/ s/^#*/#/' -i /etc/httpd/conf.d/phpMyAdmin.conf
+ln -s /usr/share/phpMyAdmin /var/www/vagrant.dev/sql-admin
+
+
+# reload apache to apply changes
+systemctl restart httpd.service
+
+
+# Development tools
+yum install -y git2u
+yum install -y clang libstdc++-static
+yum install -y libXrender fontconfig libXext
+yum install -y vim nano
+yum install -y valgrind
+
+
+# yum install -y clang-devel
