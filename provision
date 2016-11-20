@@ -1,33 +1,50 @@
-# Add IUS repo
-curl 'https://setup.ius.io/' -o setup-ius.sh
-bash setup-ius.sh
-rm setup-ius.sh
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+unprivileged()
+{
+    local COMMAND="$@"
+
+    su - vagrant -c "${COMMAND}"
+}
+
+unprivileged_install()
+{
+    local PACKAGE="$1"
+    local BRANCH="$2"
+    local INSTALLER="$3"
+    local BASE_URL='https://raw.githubusercontent.com'
+
+    unprivileged "bash < <(curl -sL ${BASE_URL}/${PACKAGE}/${BRANCH}/${INSTALLER})"
+}
+
+
+# add IUS repo
+bash < <(curl https://setup.ius.io/)
+
+
+# add ELRepo and enable kernel and extras channels
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+yum-config-manager --enable elrepo-kernel, elrepo-extras
+
+
+# update packages
+yum update -y
+
+
+# system utilites
+yum remove -y rsync
+yum install -y rsync31u
+yum install -y iotop htop tmux zip unzip wget bind-utils telnet inotify-tools
 
 
 # apache
-yum install -y httpd
+yum install -y httpd24u
 systemctl start httpd.service
 systemctl enable httpd.service
-
-
-# mysql
-yum install -y mariadb-server mariadb
-systemctl start mariadb
-systemctl enable mariadb.service
-mysql_secure_installation <<EOF
-
-y
-root
-root
-y
-y
-y
-y
-EOF
-
-
-# php
-yum install -y mod_php70u php70u-cli php70u-mysqlnd php70u-process php70u-gd php70u-pdo php70u-common php70u-bcmath php70u-mbstring php70u-xml php70u-mysqlnd php70u-cli php70u-tidy php70u-json
+usermod -aG apache vagrant
 
 
 # setup vhost
@@ -44,27 +61,166 @@ cat << EOF > /etc/httpd/conf.d/vagrant.dev.conf
 </VirtualHost>
 EOF
 
-# Add document root and test subdomain directory
+
+# add document root and test subdomain directory
+rmdir /var/www/html /var/www/cgi-bin
 mkdir -p /var/www/vagrant.dev/test
-chown -R apache. /var/www/vagrant.dev
+chown -R vagrant:apache /var/www/vagrant.dev
+sed -ie '/DocumentRoot "\/var\/www\/html"/ s/^#*/#/' /etc/httpd/conf/httpd.conf
+
+
+# set selinux to permissive mode for multi-user permission setup
+setenforce permissive
+sed -ie '/^SELINUX=/s/^SELINUX=[0-1a-z]\+/SELINUX=permissive/' /etc/selinux/config
+
+
+# redis
+yum install -y redis32u
+systemctl start redis.service
+systemctl enable redis.service
+
+
+# mysql
+yum remove -y mariadb-libs
+yum install -y mariadb101u-server mariadb101u
+systemctl start mariadb
+systemctl enable mariadb.service
+mysql_secure_installation <<EOF
+
+y
+root
+root
+y
+y
+y
+y
+EOF
+
+
+# passwordless mysql root login
+cat << EOF > /root/.my.cnf
+[client]
+password = root
+EOF
+
+
+# dev mysql user with passwordless login for vagrant
+mysql -e "GRANT ALL on *.* TO 'dev'@'localhost' IDENTIFIED BY 'dev' WITH GRANT OPTION"
+mysql -e 'FLUSH PRIVILEGES'
+cat << EOF > /home/vagrant/.my.cnf
+[client]
+user = dev
+password = dev
+EOF
+chown vagrant. /home/vagrant/.my.cnf
+
+
+# php
+yum install -y              \
+    mod_php70u              \
+    php70u-cli              \
+    php70u-opcache          \
+    php70u-mysqlnd          \
+    php70u-process          \
+    php70u-gd               \
+    php70u-pdo              \
+    php70u-common           \
+    php70u-bcmath           \
+    php70u-mbstring         \
+    php70u-xml              \
+    php70u-mysqlnd          \
+    php70u-cli              \
+    php70u-tidy             \
+    php70u-json             \
+    php70u-intl             \
+    php70u-mcrypt           \
+    php70u-soap
 
 
 # phpmyadmin
 yum install -y phpmyadmin
-sed -e '/Alias/ s/^#*/#/' -i /etc/httpd/conf.d/phpMyAdmin.conf
+sed -ie '/Alias/ s/^#*/#/' /etc/httpd/conf.d/phpMyAdmin.conf
 ln -s /usr/share/phpMyAdmin /var/www/vagrant.dev/sql-admin
+
+
+# php configuration (httpd + CLI)
+sed -ie '/^;date.timezone =/s/^;date.timezone =/date.timezone = UTC/' /etc/php.ini
+sed -ie '/^memory_limit =/s/^memory_limit = [0-9a-zA-Z]\+/memory_limit = 1G/' /etc/php.ini
+sed -ie '/^upload_max_filesize =/s/^upload_max_filesize = [0-9a-zA-Z]\+/upload_max_filesize = 1G/' /etc/php.ini
+sed -ie '/^post_max_size =/s/^post_max_size = [0-9a-zA-Z]\+/post_max_size = 1G/' /etc/php.ini
+echo -e '\n[misc]\nasp_tags = Off' >> /etc/php.ini
+sed -ie '/^;opcache.save_comments=/s/^;opcache.save_comments=[0-1]/opcache.save_comments=1/' $(find /etc/php.d -type f -name '*opcache.ini')
+
+
+# composer
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+
+
+# magerun
+curl -O https://files.magerun.net/n98-magerun.phar
+chmod +x n98-magerun.phar
+mv n98-magerun.phar /usr/local/bin
+ln -s /usr/local/bin/n98-magerun.phar /usr/local/bin/magerun
+
+
+# magerun2
+curl -O https://files.magerun.net/n98-magerun2.phar
+chmod +x n98-magerun2.phar
+mv n98-magerun2.phar /usr/local/bin
+ln -s /usr/local/bin/n98-magerun2.phar /usr/local/bin/magerun2
+
+
+# modman
+unprivileged_install colinmollenhour/modman master modman-installer
+
+
+# nodeJS and global (-g) npm packages
+unprivileged_install creationix/nvm v0.32.1 install.sh
+unprivileged nvm install node
+unprivileged npm install -g grunt gulp bower
 
 
 # reload apache to apply changes
 systemctl restart httpd.service
 
 
-# Development tools
+# development tools & libraries
 yum install -y git2u
+yum install -y gcc gcc-c++
 yum install -y clang libstdc++-static
+yum install -y cmake3 automake autoconf libtool
 yum install -y libXrender fontconfig libXext
 yum install -y vim nano
-yum install -y valgrind
+yum install -y cgdb valgrind
+yum install -y colordiff
 
 
-# yum install -y clang-devel
+# aliases and functions for root
+cat << 'EOF' >> /root/.bashrc
+alias ll='ls -ahlFX --color=always'
+EOF
+
+
+# aliases and functions for vagrant
+cat << 'EOF' >> /home/vagrant/.bashrc
+alias ll='ls -ahlFX --color=always'
+alias mygrep='grep -nRI --color=always --exclude-dir={.git}'
+
+dev() {
+    local DEV_PATH="/var/www/vagrant.dev"
+    if [[ "$#" == 0 ]]; then
+        cd "$DEV_PATH"
+    elif [[ "$#" == 1 && -e "$DEV_PATH/$1" ]]; then
+        cd "$DEV_PATH/$1"
+    elif [[ "$#" > 1 ]]; then
+        echo "Usage: dev projectname"
+    elif [[ ! -e "$DEV_PATH/$1" ]]; then
+        echo "Directory does not exist"
+    fi
+}
+EOF
+
+
+# make binaries added via guest-bin executable
+chmod -R u+x /home/vagrant/bin

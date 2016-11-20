@@ -1,0 +1,14 @@
+#!/bin/bash
+
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+sudo yum install -y java-1.8.0-openjdk-headless
+sudo rpm -ivh https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.0.1.rpm
+sudo sed -ie '/^#cluster.name:/s/^#cluster.name:.*/cluster.name: dev0/' /etc/elasticsearch/elasticsearch.yml
+sudo sed -ie '/^#node.name:/s/^#node.name:.*/node.name: vagrant0/' /etc/elasticsearch/elasticsearch.yml
+sudo systemctl daemon-reload
+sudo systemctl start elasticsearch.service
+sudo systemctl enable elasticsearch.service

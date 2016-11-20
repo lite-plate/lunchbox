@@ -1,0 +1,70 @@
+#!/bin/bash
+
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+run()
+{
+    local WEB_PATH='/var/www/vagrant.dev'
+    local MAGENTO_PATH="${WEB_PATH}/magento2"
+    local SAMPLE_PATH="${WEB_PATH}/magento2-sample-data"
+
+    # clone source
+    cd "${WEB_PATH}"
+    git clone https://github.com/magento/magento2
+    git clone https://github.com/magento/magento2-sample-data
+
+
+    # link magento 2 sample data
+    php -f "${SAMPLE_PATH}/dev/tools/build-sample-data.php" -- --ce-source="${MAGENTO_PATH}"
+
+
+    # magento 2 sample data perms
+    cd "${SAMPLE_PATH}"
+    sudo chown -R :apache .
+    find . -type d -exec chmod g+ws {} \;
+
+
+    # magento 2 perms
+    cd "${MAGENTO_PATH}"
+    find var vendor pub/static pub/media app/etc -type f -exec chmod g+w {} \;
+    find var vendor pub/static pub/media app/etc -type d -exec chmod g+ws {} \;
+    sudo chown -R :apache .
+    chmod u+x bin/magento
+
+
+    # update dependencies
+    composer install
+
+
+    # create database for install
+    mysql -e 'CREATE DATABASE dev_magento2'
+
+
+    # install magento 2 (includes sample data)
+    bin/magento setup:install                           \
+        --admin-firstname=Admin                         \
+        --admin-lastname=User                           \
+        --admin-email=test@example.com                  \
+        --admin-user=admin                              \
+        --admin-password=password1                      \
+        --base-url=http://magento2.vagrant.dev/         \
+        --backend-frontname=admin                       \
+        --db-host=localhost                             \
+        --db-name=dev_magento2                          \
+        --db-user=dev                                   \
+        --db-password=dev                               \
+        --currency=USD                                  \
+        --language=en_US                                \
+        --timezone=America/Chicago                      \
+        --use-rewrites=1
+
+
+    # enable developer mode
+    rm -rf var/cache/* var/page_cache/* var/generation/*
+    bin/magento deploy:mode:set developer
+}
+
+run
