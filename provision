@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # stop execution if an error or undefined variable is encountered
 set -eu
 
@@ -204,10 +206,12 @@ EOF
 
 # aliases and functions for vagrant
 cat << 'EOF' >> /home/vagrant/.bashrc
+
 alias ll='ls -ahlFX --color=always'
 alias mygrep='grep -nRI --color=always --exclude-dir={.git}'
 
-dev() {
+dev()
+{
     local DEV_PATH="/var/www/vagrant.dev"
     if [[ "$#" == 0 ]]; then
         cd "$DEV_PATH"
@@ -222,5 +226,16 @@ dev() {
 EOF
 
 
-# make binaries added via guest-bin executable
-chmod -R u+x /home/vagrant/bin
+# setup executables added via guest-bin file provisioner
+chmod -R u+x /tmp/guest-bin
+cp /tmp/guest-bin/* /home/vagrant/bin
+rm -rf /tmp/guest-bin
+chown -R vagrant. /home/vagrant/bin
+
+
+# setup SSH files added via guest-ssh file provisioner
+cp /tmp/guest-ssh/* /home/vagrant/.ssh
+rm -rf /tmp/guest-ssh
+find /home/vagrant/.ssh -type d -print0 | xargs -0 chmod 700
+find /home/vagrant/.ssh -type f -print0 | xargs -0 chmod 600
+chown -R vagrant. /home/vagrant/.ssh

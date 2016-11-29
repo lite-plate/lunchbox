@@ -1,1 +1,3 @@
 .vagrant
+guest-ssh/*
+!guest-ssh/.gitkeep

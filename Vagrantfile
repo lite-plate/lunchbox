@@ -34,9 +34,12 @@ Vagrant.configure("2") do |config|
     end
 
 
-    # upload scripts from guest-bin to guest ~/bin directory
-    config.vm.provision "file", source: "guest-bin/install-magento2", destination: "~/bin/install-magento2"
-    config.vm.provision "file", source: "guest-bin/install-elasticsearch", destination: "~/bin/install-elasticsearch"
+    # upload SSH files from guest-ssh to ~/.ssh directory on guest
+    config.vm.provision "file", source: "guest-ssh", destination: "/tmp/guest-ssh"
+
+
+    # upload executable files from guest-bin to guest ~/bin directory
+    config.vm.provision "file", source: "guest-bin", destination: "/tmp/guest-bin"
 
 
     # install packages and configure box
