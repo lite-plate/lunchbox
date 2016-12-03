@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+unprivileged()
+{
+    local COMMAND="$@"
+
+    su - vagrant -c "${COMMAND}"
+}
+
+unprivileged_install()
+{
+    local PACKAGE="$1"
+    local BRANCH="$2"
+    local INSTALLER="$3"
+    local BASE_URL='https://raw.githubusercontent.com'
+
+    unprivileged "bash < <(curl -sL ${BASE_URL}/${PACKAGE}/${BRANCH}/${INSTALLER})"
+}
+
+
+# update packages
+yum update -y
+
+
+# system utilites
+yum remove -y rsync
+yum install -y rsync31u
+yum install -y iotop htop tmux zip unzip wget bind-utils telnet inotify-tools
+
+
+# apache
+yum install -y httpd24u
+
+
+# redis
+yum install -y redis32u
+
+
+# mysql
+yum remove -y mariadb-libs
+yum install -y mariadb101u-server mariadb101u
+
+
+# php
+yum install -y              \
+    mod_php70u              \
+    php70u-cli              \
+    php70u-opcache          \
+    php70u-mysqlnd          \
+    php70u-process          \
+    php70u-gd               \
+    php70u-pdo              \
+    php70u-common           \
+    php70u-bcmath           \
+    php70u-mbstring         \
+    php70u-xml              \
+    php70u-mysqlnd          \
+    php70u-cli              \
+    php70u-tidy             \
+    php70u-json             \
+    php70u-intl             \
+    php70u-mcrypt           \
+    php70u-soap
+
+
+# phpmyadmin
+yum install -y phpmyadmin
+
+
+# development tools & libraries
+yum install -y git2u
+yum install -y gcc gcc-c++
+yum install -y clang libstdc++-static
+yum install -y cmake3 automake autoconf libtool
+yum install -y libXrender fontconfig libXext
+yum install -y vim nano
+yum install -y cgdb valgrind
+yum install -y colordiff
+
+
+# composer
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+
+
+# magerun
+curl -O https://files.magerun.net/n98-magerun.phar
+chmod +x n98-magerun.phar
+mv n98-magerun.phar /usr/local/bin
+ln -s /usr/local/bin/n98-magerun.phar /usr/local/bin/magerun
+
+
+# magerun2
+curl -O https://files.magerun.net/n98-magerun2.phar
+chmod +x n98-magerun2.phar
+mv n98-magerun2.phar /usr/local/bin
+ln -s /usr/local/bin/n98-magerun2.phar /usr/local/bin/magerun2
+
+
+# modman
+unprivileged_install colinmollenhour/modman master modman-installer
+
+
+# nodeJS and global (-g) npm packages
+unprivileged_install creationix/nvm v0.32.1 install.sh
+unprivileged nvm install node
+unprivileged npm install -g grunt gulp bower

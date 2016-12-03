@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+# setup executables added via guest-bin file provisioner
+chmod -R u+x /tmp/guest-bin
+cp /tmp/guest-bin/* /home/vagrant/bin
+rm -rf /tmp/guest-bin
+chown -R vagrant. /home/vagrant/bin

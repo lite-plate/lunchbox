@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+# apache
+systemctl start httpd.service
+systemctl enable httpd.service
+usermod -aG apache vagrant
+
+
+# setup vhost
+cat << EOF > /etc/httpd/conf.d/vagrant.dev.conf
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    VirtualDocumentRoot "/var/www/vagrant.dev/%1"
+
+    <Directory "/var/www/vagrant.dev">
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+EOF
+
+
+# add document root and test subdomain directory
+rmdir /var/www/html /var/www/cgi-bin
+mkdir -p /var/www/vagrant.dev/test
+chown -R vagrant:apache /var/www/vagrant.dev
+sed -ie '/DocumentRoot "\/var\/www\/html"/ s/^#*/#/' /etc/httpd/conf/httpd.conf
+
+
+# set selinux to permissive mode for multi-user permission setup
+setenforce permissive
+sed -ie '/^SELINUX=/s/^SELINUX=[0-1a-z]\+/SELINUX=permissive/' /etc/selinux/config
+
+
+# redis
+systemctl start redis.service
+systemctl enable redis.service
+
+
+# mysql
+systemctl start mariadb
+systemctl enable mariadb.service
+mysql_secure_installation <<EOF
+
+y
+root
+root
+y
+y
+y
+y
+EOF
+
+
+# passwordless mysql root login
+cat << EOF > /root/.my.cnf
+[client]
+password = root
+EOF
+
+
+# dev mysql user with passwordless login for vagrant
+mysql -e "GRANT ALL on *.* TO 'dev'@'localhost' IDENTIFIED BY 'dev' WITH GRANT OPTION"
+mysql -e 'FLUSH PRIVILEGES'
+cat << EOF > /home/vagrant/.my.cnf
+[client]
+user = dev
+password = dev
+EOF
+chown vagrant. /home/vagrant/.my.cnf
+
+
+# phpmyadmin
+sed -ie '/Alias/ s/^#*/#/' /etc/httpd/conf.d/phpMyAdmin.conf
+ln -s /usr/share/phpMyAdmin /var/www/vagrant.dev/sql-admin
+
+
+# php configuration (httpd + CLI)
+sed -ie '/^;date.timezone =/s/^;date.timezone =/date.timezone = UTC/' /etc/php.ini
+sed -ie '/^memory_limit =/s/^memory_limit = [0-9a-zA-Z]\+/memory_limit = 1G/' /etc/php.ini
+sed -ie '/^upload_max_filesize =/s/^upload_max_filesize = [0-9a-zA-Z]\+/upload_max_filesize = 1G/' /etc/php.ini
+sed -ie '/^post_max_size =/s/^post_max_size = [0-9a-zA-Z]\+/post_max_size = 1G/' /etc/php.ini
+echo -e '\n[misc]\nasp_tags = Off' >> /etc/php.ini
+sed -ie '/^;opcache.save_comments=/s/^;opcache.save_comments=[0-1]/opcache.save_comments=1/' $(find /etc/php.d -type f -name '*opcache.ini')
+
+
+# reload apache to apply changes
+systemctl restart httpd.service
+
+
+# aliases and functions for root
+cat << 'EOF' >> /root/.bashrc
+alias ll='ls -ahlFX --color=always'
+EOF
+
+
+# aliases and functions for vagrant
+cat << 'EOF' >> /home/vagrant/.bashrc
+
+alias ll='ls -ahlFX --color=always'
+alias mygrep='grep -nRI --color=always --exclude-dir={.git}'
+
+dev()
+{
+    local DEV_PATH="/var/www/vagrant.dev"
+    if [[ "$#" == 0 ]]; then
+        cd "$DEV_PATH"
+    elif [[ "$#" == 1 && -e "$DEV_PATH/$1" ]]; then
+        cd "$DEV_PATH/$1"
+    elif [[ "$#" > 1 ]]; then
+        echo "Usage: dev projectname"
+    elif [[ ! -e "$DEV_PATH/$1" ]]; then
+        echo "Directory does not exist"
+    fi
+}
+EOF

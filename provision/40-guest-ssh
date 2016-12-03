@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+# setup SSH files added via guest-ssh file provisioner
+cp /tmp/guest-ssh/* /home/vagrant/.ssh
+rm -rf /tmp/guest-ssh
+find /home/vagrant/.ssh -type d -print0 | xargs -0 chmod 700
+find /home/vagrant/.ssh -type f -print0 | xargs -0 chmod 600
+chown -R vagrant. /home/vagrant/.ssh

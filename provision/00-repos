@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# stop execution if an error or undefined variable is encountered
+set -eu
+
+
+# add IUS repo
+bash < <(curl https://setup.ius.io/)
+
+
+# add ELRepo and enable kernel and extras channels
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+yum-config-manager --enable elrepo-kernel, elrepo-extras

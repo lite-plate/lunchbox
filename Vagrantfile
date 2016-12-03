@@ -42,6 +42,10 @@ Vagrant.configure("2") do |config|
     config.vm.provision "file", source: "guest-bin", destination: "/tmp/guest-bin"
 
 
-    # install packages and configure box
-    config.vm.provision :shell, path: "provision"
+    # run all provisioners in the provision_path directory
+    provision_path = 'provision'
+    Dir.foreach(provision_path) do |file|
+        next if file == '.' or file == '..'
+        config.vm.provision "#{file}", type: "shell", path: "#{provision_path}/#{file}"
+    end
 end
