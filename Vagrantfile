@@ -35,11 +35,11 @@ Vagrant.configure("2") do |config|
 
 
     # upload SSH files from guest-ssh to ~/.ssh directory on guest
-    config.vm.provision "file", source: "guest-ssh", destination: "/tmp/guest-ssh"
+    config.vm.provision "guest-ssh", type: "file", source: "guest-ssh", destination: "/tmp/guest-ssh"
 
 
     # upload executable files from guest-bin to guest ~/bin directory
-    config.vm.provision "file", source: "guest-bin", destination: "/tmp/guest-bin"
+    config.vm.provision "guest-bin", type: "file", source: "guest-bin", destination: "/tmp/guest-bin"
 
 
     # run all provisioners in the provision_path directory

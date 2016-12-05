@@ -4,7 +4,14 @@
 set -eu
 
 
-# setup SSH files added via guest-ssh file provisioner
+# copy keys to ~/.ssh/authorized_keys if they don't already exist
+for FILE in /tmp/guest-ssh/authorized_keys/*; do
+    KEY="$(cat "$FILE")"
+    grep -xq "$KEY" /home/vagrant/.ssh/authorized_keys || echo "$KEY" >> /home/vagrant/.ssh/authorized_keys
+done
+rm -rf /tmp/guest-ssh/authorized_keys
+
+# copy remaining ssh files to ~/.ssh
 cp /tmp/guest-ssh/* /home/vagrant/.ssh
 rm -rf /tmp/guest-ssh
 find /home/vagrant/.ssh -type d -print0 | xargs -0 chmod 700
