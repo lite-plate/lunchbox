@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -eu
+
+
+# install latest stable ruby
+VERSION=$(rbenv install -l | grep -v '-' | tail -1)
+rbenv install $VERSION
+rbenv global $VERSION
+
+
+# install bundler for gem dependency management
+gem install bundler

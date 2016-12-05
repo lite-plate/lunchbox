@@ -77,6 +77,7 @@ yum install -y gcc gcc-c++
 yum install -y clang libstdc++-static
 yum install -y cmake3 automake autoconf libtool
 yum install -y libXrender fontconfig libXext
+yum install -y openssl-devel readline-devel zlib-devel
 yum install -y vim nano
 yum install -y cgdb valgrind
 yum install -y colordiff
@@ -109,3 +110,15 @@ unprivileged_install colinmollenhour/modman master modman-installer
 unprivileged_install creationix/nvm v0.32.1 install.sh
 unprivileged nvm install node
 unprivileged npm install -g grunt gulp bower
+
+
+# rbenv
+unprivileged git clone https://github.com/rbenv/rbenv.git /home/vagrant/.rbenv
+unprivileged mkdir /home/vagrant/.rbenv/plugins
+unprivileged git clone https://github.com/rbenv/ruby-build.git /home/vagrant/.rbenv/plugins/ruby-build
+cat << 'EOF' >> /home/vagrant/.bash_profile
+
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"
+EOF
