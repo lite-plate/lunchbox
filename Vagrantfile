@@ -43,9 +43,15 @@ Vagrant.configure("2") do |config|
 
 
     # run all provisioners in the provision_path directory
+    env = {
+        'PHP_INSTALL_VERSION' => '7.0',
+    }
     provision_path = 'provision'
     Dir.foreach(provision_path) do |file|
         next if file == '.' or file == '..'
-        config.vm.provision "#{file}", type: "shell", path: "#{provision_path}/#{file}"
+        config.vm.provision "#{file}",
+            type: "shell",
+            path: "#{provision_path}/#{file}",
+            env: env
     end
 end

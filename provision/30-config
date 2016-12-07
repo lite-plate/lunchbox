@@ -85,8 +85,12 @@ sed -i -e '/^;date.timezone =/s/^;date.timezone =/date.timezone = UTC/' /etc/php
 sed -i -e '/^memory_limit =/s/^memory_limit = [0-9a-zA-Z]\+/memory_limit = 1G/' /etc/php.ini
 sed -i -e '/^upload_max_filesize =/s/^upload_max_filesize = [0-9a-zA-Z]\+/upload_max_filesize = 1G/' /etc/php.ini
 sed -i -e '/^post_max_size =/s/^post_max_size = [0-9a-zA-Z]\+/post_max_size = 1G/' /etc/php.ini
-echo -e '\n[misc]\nasp_tags = Off' >> /etc/php.ini
-sed -i -e '/^;opcache.save_comments=/s/^;opcache.save_comments=[0-1]/opcache.save_comments=1/' $(find /etc/php.d -type f -name '*opcache.ini')
+if [ "$PHP_INSTALL_VERSION" = '5.6' ]; then
+    echo -e '\n[misc]\nasp_tags = Off' >> /etc/php.ini
+fi
+if [ "$PHP_INSTALL_VERSION" = '7.0' ]; then
+    sed -i -e '/^;opcache.save_comments=/s/^;opcache.save_comments=[0-1]/opcache.save_comments=1/' $(find /etc/php.d -type f -name '*opcache.ini')
+fi
 
 
 # reload apache to apply changes

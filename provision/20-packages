@@ -46,25 +46,31 @@ yum install -y mariadb101u-server mariadb101u
 
 
 # php
+PHP="php${PHP_INSTALL_VERSION//.}u"
+if [ "$PHP_INSTALL_VERSION" = '7.0' ]; then
+    HTTPD_PACKAGE="mod_${PHP}"
+else
+    HTTPD_PACKAGE="${PHP}"
+fi
 yum install -y              \
-    mod_php70u              \
-    php70u-cli              \
-    php70u-opcache          \
-    php70u-mysqlnd          \
-    php70u-process          \
-    php70u-gd               \
-    php70u-pdo              \
-    php70u-common           \
-    php70u-bcmath           \
-    php70u-mbstring         \
-    php70u-xml              \
-    php70u-mysqlnd          \
-    php70u-cli              \
-    php70u-tidy             \
-    php70u-json             \
-    php70u-intl             \
-    php70u-mcrypt           \
-    php70u-soap
+    "${HTTPD_PACKAGE}"      \
+    "${PHP}-cli"            \
+    "${PHP}-opcache"        \
+    "${PHP}-mysqlnd"        \
+    "${PHP}-process"        \
+    "${PHP}-gd"             \
+    "${PHP}-pdo"            \
+    "${PHP}-common"         \
+    "${PHP}-bcmath"         \
+    "${PHP}-mbstring"       \
+    "${PHP}-xml"            \
+    "${PHP}-mysqlnd"        \
+    "${PHP}-cli"            \
+    "${PHP}-tidy"           \
+    "${PHP}-json"           \
+    "${PHP}-intl"           \
+    "${PHP}-mcrypt"         \
+    "${PHP}-soap"
 
 
 # phpmyadmin
